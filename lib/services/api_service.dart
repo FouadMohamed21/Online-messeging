@@ -4,19 +4,24 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class ApiService {
+  static const String _productionUrl =
+      'https://online-messeging-production.up.railway.app';
+
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000';
-    } else if (Platform.isAndroid) {
-      return 'http://10.0.2.2:3000';
-    } else {
-      return 'http://localhost:3000';
-    }
+    const bool isProduction = bool.fromEnvironment('dart.vm.product');
+    if (isProduction) return _productionUrl;
+
+    if (kIsWeb) return 'http://localhost:3000';
+    if (Platform.isAndroid) return 'http://10.0.2.2:3000';
+    return 'http://localhost:3000';
   }
 
   // --- AUTH MODULE ---
-  
-  static Future<Map<String, dynamic>> login(String email, String password) async {
+
+  static Future<Map<String, dynamic>> login(
+    String email,
+    String password,
+  ) async {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
@@ -39,7 +44,7 @@ class ApiService {
   }
 
   // --- USER MODULE ---
-  
+
   static Future<List<dynamic>> searchUsers(String query) async {
     final response = await http.get(Uri.parse('$baseUrl/user/search?q=$query'));
     if (response.statusCode == 200) {
@@ -50,18 +55,28 @@ class ApiService {
   }
 
   // --- MESSAGE MODULE ---
-  
-  static Future<bool> sendMessage(int senderId, int receiverId, String content) async {
+
+  static Future<bool> sendMessage(
+    int senderId,
+    int receiverId,
+    String content,
+  ) async {
     final response = await http.post(
       Uri.parse('$baseUrl/message'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'senderId': senderId, 'receiverId': receiverId, 'content': content}),
+      body: jsonEncode({
+        'senderId': senderId,
+        'receiverId': receiverId,
+        'content': content,
+      }),
     );
     return response.statusCode == 201;
   }
 
   static Future<List<dynamic>> getMessages(int user1, int user2) async {
-    final response = await http.get(Uri.parse('$baseUrl/message/$user1/$user2'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/message/$user1/$user2'),
+    );
     if (response.statusCode == 200) {
       return jsonDecode(response.body)['messages'] ?? [];
     } else {

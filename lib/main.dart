@@ -1,20 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'screens/login_screen.dart';
 import 'screens/chat_list_screen.dart';
+import 'utils/session_manager.dart';
 
-void main() {
-  // Enforce transparent status bar with light icons
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
     ),
   );
-  runApp(const FouadMessengerApp());
+  // Check if there is already a saved session
+  final loggedIn = await SessionManager.isLoggedIn();
+  runApp(FouadMessengerApp(startLoggedIn: loggedIn));
 }
 
 class FouadMessengerApp extends StatelessWidget {
-  const FouadMessengerApp({super.key});
+  final bool startLoggedIn;
+  const FouadMessengerApp({super.key, required this.startLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -24,14 +29,15 @@ class FouadMessengerApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F172A), // Premium Slate 900
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF6366F1), // Vibrant Indigo 500
-          secondary: Color(0xFF14B8A6), // Vibrant Teal 500
-          surface: Color(0xFF1E293B), // Slate 800
+          primary: Color(0xFF6366F1),
+          secondary: Color(0xFF14B8A6),
+          surface: Color(0xFF1E293B),
         ),
       ),
-      home: const ChatListScreen(),
+      // Route directly to ChatList if already logged in, otherwise LoginScreen
+      home: startLoggedIn ? const ChatListScreen() : const LoginScreen(),
     );
   }
 }

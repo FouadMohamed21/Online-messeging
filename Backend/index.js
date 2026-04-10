@@ -19,7 +19,7 @@ app.use("/user", userRouter);
 app.use("/auth", authRouter);
 app.use("/message", messageRouter);
 
-app.all(".", (req, res) => {
+app.all("*", (req, res) => {
   res.status(404).send("Not Found");
 });
 
