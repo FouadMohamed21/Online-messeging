@@ -4,8 +4,8 @@ import express from "express";
 import cors from "cors";
 
 
-import userRouter from "./src/Modules/user/user.controller.js";
-import authRouter from "./src/Modules/auth/auth.controller.js";
+import userRouter from "./src/Modules/User/user.controller.js";
+import authRouter from "./src/Modules/Auth/auth.controller.js";
 import messageRouter from "./src/Modules/message/message.controller.js";
 
 const app = express();
