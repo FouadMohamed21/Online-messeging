@@ -100,4 +100,15 @@ class ApiService {
     }
     throw Exception('Failed to get messages');
   }
+
+  /// Get all users who have had a conversation with [userId]
+  static Future<List<dynamic>> getConversations(int userId) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/message/conversations/$userId'),
+    );
+    if (res.statusCode == 200) {
+      return (jsonDecode(res.body) as Map<String, dynamic>)['contacts'] ?? [];
+    }
+    throw Exception('Failed to get conversations');
+  }
 }

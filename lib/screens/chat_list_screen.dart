@@ -32,15 +32,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   Future<void> _loadContacts() async {
+    if (_myId == null) return;
     try {
-      // Search all users (empty query returns everyone)
-      final raw = await ApiService.searchUsers('');
-      final all = raw
+      final raw = await ApiService.getConversations(_myId!);
+      final contacts = raw
           .map((e) => UserModel.fromJson(e as Map<String, dynamic>))
-          .where((u) => u.id != _myId) // exclude self
           .toList();
       setState(() {
-        _contacts = all;
+        _contacts = contacts;
         _isLoading = false;
       });
     } catch (_) {
@@ -188,70 +187,88 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Widget _buildContactTile(UserModel user) {
     final initials =
         user.name.isNotEmpty ? user.name[0].toUpperCase() : '?';
-    return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => ChatScreen(contact: user)),
-      ),
-      child: Padding(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        child: Row(
-          children: [
-            // Avatar with gradient initial
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFF14B8A6)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  initials,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+    final preview = (user.lastMessage != null && user.lastMessage!.isNotEmpty)
+        ? user.lastMessage!
+        : user.email;
+
+    return Column(
+      children: [
+        InkWell(
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ChatScreen(contact: user)),
+            );
+            // Refresh list when returning from chat (new messages may exist)
+            _loadContacts();
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            child: Row(
+              children: [
+                // Avatar with gradient initial
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6366F1), Color(0xFF14B8A6)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    user.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  child: Center(
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    user.email,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withOpacity(0.5),
-                    ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        preview,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.white.withOpacity(0.45),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    color: Colors.white24, size: 20),
+              ],
             ),
-            const Icon(Icons.chevron_right_rounded,
-                color: Colors.white24, size: 20),
-          ],
+          ),
         ),
-      ),
+        Divider(
+          height: 1,
+          thickness: 0.5,
+          indent: 96,
+          endIndent: 24,
+          color: Colors.white.withOpacity(0.07),
+        ),
+      ],
     );
   }
 
@@ -260,19 +277,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.people_outline_rounded,
+          Icon(Icons.chat_bubble_outline_rounded,
               size: 70, color: Colors.white.withOpacity(0.1)),
           const SizedBox(height: 18),
           Text(
-            'No other users yet',
+            'No conversations yet',
             style: TextStyle(
-                color: Colors.white.withOpacity(0.3), fontSize: 16),
+                color: Colors.white.withOpacity(0.3),
+                fontSize: 17,
+                fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Text(
-            'Invite your friends to join!',
+            'Tap ✏️ to find someone and start chatting!',
             style: TextStyle(
-                color: Colors.white.withOpacity(0.2), fontSize: 14),
+                color: Colors.white.withOpacity(0.2), fontSize: 13),
           ),
         ],
       ),
