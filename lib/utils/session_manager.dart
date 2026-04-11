@@ -1,11 +1,13 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Persists the logged-in user session to device storage.
+/// The session survives app restarts — user only logs in once.
 class SessionManager {
   static const _keyId = 'user_id';
   static const _keyName = 'user_name';
   static const _keyEmail = 'user_email';
 
-  /// Save the logged-in user to local storage
+  /// Save the logged-in user to local device storage
   static Future<void> saveUser(int id, String name, String email) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyId, id);
@@ -37,7 +39,7 @@ class SessionManager {
     return prefs.getString(_keyEmail);
   }
 
-  /// Clear the saved session (logout)
+  /// Clear the session (logout)
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();

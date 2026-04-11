@@ -45,16 +45,9 @@ class _SignupScreenState extends State<SignupScreen>
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
-      // 1. Create the account
-      final success = await ApiService.signup(
+      // signup returns user map directly — no second login call needed
+      final data = await ApiService.signup(
         _nameCtrl.text.trim(),
-        _emailCtrl.text.trim(),
-        _passwordCtrl.text.trim(),
-      );
-      if (!success) throw Exception('Signup failed');
-
-      // 2. Immediately log them in to get the user object
-      final data = await ApiService.login(
         _emailCtrl.text.trim(),
         _passwordCtrl.text.trim(),
       );
@@ -64,7 +57,6 @@ class _SignupScreenState extends State<SignupScreen>
         user['name'] as String,
         user['email'] as String,
       );
-
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
@@ -73,15 +65,15 @@ class _SignupScreenState extends State<SignupScreen>
       );
     } catch (e) {
       if (!mounted) return;
+      final msg = e.toString().contains('already registered')
+          ? 'This email is already registered.'
+          : 'Signup failed. Please try again.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().contains('Duplicate')
-              ? 'This email is already registered.'
-              : 'Signup failed. Please try again.'),
+          content: Text(msg),
           backgroundColor: Colors.redAccent.shade200,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     } finally {
@@ -150,9 +142,8 @@ class _SignupScreenState extends State<SignupScreen>
                         controller: _nameCtrl,
                         hintText: 'John Doe',
                         icon: Icons.person_outline_rounded,
-                        validator: (v) => v == null || v.isEmpty
-                            ? 'Please enter your name'
-                            : null,
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? 'Enter your name' : null,
                       ),
                       const SizedBox(height: 22),
                       _buildLabel('Email'),
@@ -163,9 +154,7 @@ class _SignupScreenState extends State<SignupScreen>
                         icon: Icons.email_outlined,
                         keyboardType: TextInputType.emailAddress,
                         validator: (v) =>
-                            v == null || !v.contains('@')
-                                ? 'Enter a valid email'
-                                : null,
+                            v == null || !v.contains('@') ? 'Enter a valid email' : null,
                       ),
                       const SizedBox(height: 22),
                       _buildLabel('Password'),
@@ -183,12 +172,11 @@ class _SignupScreenState extends State<SignupScreen>
                             color: Colors.white38,
                             size: 20,
                           ),
-                          onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword),
+                          onPressed: () =>
+                              setState(() => _obscurePassword = !_obscurePassword),
                         ),
-                        validator: (v) => v == null || v.length < 6
-                            ? 'Minimum 6 characters'
-                            : null,
+                        validator: (v) =>
+                            v == null || v.length < 6 ? 'Minimum 6 characters' : null,
                       ),
                       const SizedBox(height: 40),
                       SizedBox(
@@ -202,8 +190,7 @@ class _SignupScreenState extends State<SignupScreen>
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color:
-                                    const Color(0xFF14B8A6).withOpacity(0.4),
+                                color: const Color(0xFF14B8A6).withOpacity(0.4),
                                 blurRadius: 20,
                                 offset: const Offset(0, 8),
                               )
@@ -241,14 +228,12 @@ class _SignupScreenState extends State<SignupScreen>
                         children: [
                           Text(
                             'Already have an account? ',
-                            style:
-                                TextStyle(color: Colors.white.withOpacity(0.5)),
+                            style: TextStyle(color: Colors.white.withOpacity(0.5)),
                           ),
                           GestureDetector(
                             onTap: () => Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(
-                                  builder: (_) => const LoginScreen()),
+                              MaterialPageRoute(builder: (_) => const LoginScreen()),
                             ),
                             child: const Text(
                               'Sign In',
@@ -302,18 +287,14 @@ class _SignupScreenState extends State<SignupScreen>
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: const Color(0xFF1E293B),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none),
+            borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide:
-              const BorderSide(color: Color(0xFF14B8A6), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFF14B8A6), width: 1.5),
         ),
-        errorStyle:
-            const TextStyle(color: Colors.redAccent, fontSize: 12),
+        errorStyle: const TextStyle(color: Colors.redAccent, fontSize: 12),
       ),
     );
   }

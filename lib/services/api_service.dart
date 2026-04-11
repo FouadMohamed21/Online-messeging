@@ -1,67 +1,84 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 class ApiService {
+  // Production URL (Railway deployment)
   static const String _productionUrl =
       'https://online-messeging-production.up.railway.app';
 
+  /// Returns the correct base URL depending on environment
   static String get baseUrl {
+    // In release mode, always use production
     const bool isProduction = bool.fromEnvironment('dart.vm.product');
     if (isProduction) return _productionUrl;
-
+    // In debug mode, use local server
     if (kIsWeb) return 'http://localhost:3000';
     if (Platform.isAndroid) return 'http://10.0.2.2:3000';
     return 'http://localhost:3000';
   }
 
-  // --- AUTH MODULE ---
+  // ─── AUTH ──────────────────────────────────────────────────────────────────
 
+  /// Login — returns the full user map {id, name, email}
   static Future<Map<String, dynamic>> login(
     String email,
     String password,
   ) async {
-    final response = await http.post(
+    final res = await http.post(
       Uri.parse('$baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email, 'password': password}),
     );
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Login failed: ${response.statusCode}');
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
     }
+    throw Exception('Invalid email or password');
   }
 
-  static Future<bool> signup(String name, String email, String password) async {
-    final response = await http.post(
+  /// Signup — returns the full user map {id, name, email}
+  static Future<Map<String, dynamic>> signup(
+    String name,
+    String email,
+    String password,
+  ) async {
+    final res = await http.post(
       Uri.parse('$baseUrl/auth/signup'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'name': name, 'email': email, 'password': password}),
     );
-    return response.statusCode == 201;
-  }
-
-  // --- USER MODULE ---
-
-  static Future<List<dynamic>> searchUsers(String query) async {
-    final response = await http.get(Uri.parse('$baseUrl/user/search?q=$query'));
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body)['users'] ?? [];
-    } else {
-      throw Exception('Search failed');
+    if (res.statusCode == 201) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
     }
+    if (res.statusCode == 409) {
+      throw Exception('Email already registered');
+    }
+    throw Exception('Signup failed');
   }
 
-  // --- MESSAGE MODULE ---
+  // ─── USERS ─────────────────────────────────────────────────────────────────
 
+  /// Search users by name or email — returns a list of user maps
+  static Future<List<dynamic>> searchUsers(String query) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/user/search?q=${Uri.encodeComponent(query)}'),
+    );
+    if (res.statusCode == 200) {
+      return (jsonDecode(res.body) as Map<String, dynamic>)['users'] ?? [];
+    }
+    throw Exception('Search failed');
+  }
+
+  // ─── MESSAGES ──────────────────────────────────────────────────────────────
+
+  /// Send a message — returns true on success
   static Future<bool> sendMessage(
     int senderId,
     int receiverId,
     String content,
   ) async {
-    final response = await http.post(
+    final res = await http.post(
       Uri.parse('$baseUrl/message'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
@@ -70,17 +87,17 @@ class ApiService {
         'content': content,
       }),
     );
-    return response.statusCode == 201;
+    return res.statusCode == 201;
   }
 
+  /// Get conversation messages between two users
   static Future<List<dynamic>> getMessages(int user1, int user2) async {
-    final response = await http.get(
+    final res = await http.get(
       Uri.parse('$baseUrl/message/$user1/$user2'),
     );
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body)['messages'] ?? [];
-    } else {
-      throw Exception('Failed to get messages');
+    if (res.statusCode == 200) {
+      return (jsonDecode(res.body) as Map<String, dynamic>)['messages'] ?? [];
     }
+    throw Exception('Failed to get messages');
   }
 }
