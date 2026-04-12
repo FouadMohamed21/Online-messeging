@@ -1,4 +1,5 @@
 import db from "../../DB/connection.js";
+import { messaging } from "../../firebase.js";
 
 export const deleteMessage = (req, res) => {
   const { id } = req.params;
@@ -22,6 +23,38 @@ export const sendMessage = (req, res) => {
   const query = "INSERT INTO messages (senderId, receiverId, content) VALUES (?, ?, ?)";
   db.query(query, [senderId, receiverId, content], (err, results) => {
     if (err) return res.status(500).json({ message: "Database error", error: err });
+
+    // Fetch sender name + receiver FCM token in one query
+    db.query(
+      "SELECT u.fcm_token, s.name AS senderName FROM users u JOIN users s ON s.id = ? WHERE u.id = ?",
+      [senderId, receiverId],
+      (err2, rows) => {
+        if (!err2 && rows.length > 0 && rows[0].fcm_token && messaging) {
+          const { fcm_token, senderName } = rows[0];
+          const notifPayload = {
+            notification: {
+              title: senderName,
+              body: content.length > 100 ? content.substring(0, 97) + "..." : content,
+            },
+            data: {
+              senderId: String(senderId),
+              receiverId: String(receiverId),
+              type: "new_message",
+            },
+            token: fcm_token,
+            android: {
+              priority: "high",
+              notification: { sound: "default" },
+            },
+          };
+          // Fire-and-forget — don't block the HTTP response
+          messaging.send(notifPayload).catch((e) =>
+            console.error("FCM send error:", e.message)
+          );
+        }
+      }
+    );
+
     return res.status(201).json({ message: "Message sent", id: results.insertId });
   });
 };
