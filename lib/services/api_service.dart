@@ -121,4 +121,16 @@ class ApiService {
     }
     throw Exception('Failed to get conversations');
   }
+
+  // ─── FCM ───────────────────────────────────────────────────────────────────
+
+  /// Upload (or refresh) the FCM device token for [userId]
+  static Future<void> saveFcmToken(int userId, String fcmToken) async {
+    await http.post(
+      Uri.parse('$baseUrl/user/fcm-token'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'userId': userId, 'fcmToken': fcmToken}),
+    );
+  }
 }
+

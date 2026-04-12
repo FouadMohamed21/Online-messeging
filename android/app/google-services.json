@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1054336380852",
+    "project_id": "online-messeging1",
+    "storage_bucket": "online-messeging1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1054336380852:android:061a349bcce28840858ce1",
+        "android_client_info": {
+          "package_name": "com.example.online"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA--zLfg5_WqHVjif3Sxu2vqUVlFuJVK-Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

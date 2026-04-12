@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../utils/session_manager.dart';
+import '../fcm_api.dart';
 import 'signup_screen.dart';
 import 'chat_list_screen.dart';
 
@@ -55,6 +56,8 @@ class _LoginScreenState extends State<LoginScreen>
         user['name'] as String,
         user['email'] as String,
       );
+      // Upload FCM token now that the session is saved
+      FcmApi.init(); // fire-and-forget
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
