@@ -101,6 +101,16 @@ class ApiService {
     throw Exception('Failed to get messages');
   }
 
+  /// Delete a message by id (only the sender can delete it)
+  static Future<bool> deleteMessage(int messageId, int senderId) async {
+    final res = await http.delete(
+      Uri.parse('$baseUrl/message/$messageId'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'senderId': senderId}),
+    );
+    return res.statusCode == 200;
+  }
+
   /// Get all users who have had a conversation with [userId]
   static Future<List<dynamic>> getConversations(int userId) async {
     final res = await http.get(

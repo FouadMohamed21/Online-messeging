@@ -1,5 +1,22 @@
 import db from "../../DB/connection.js";
 
+export const deleteMessage = (req, res) => {
+  const { id } = req.params;
+  const { senderId } = req.body;
+  // Verify ownership before deleting
+  const checkQuery = "SELECT senderId FROM messages WHERE id = ?";
+  db.query(checkQuery, [id], (err, results) => {
+    if (err) return res.status(500).json({ message: "Database error", error: err });
+    if (results.length === 0) return res.status(404).json({ message: "Message not found" });
+    if (results[0].senderId !== parseInt(senderId))
+      return res.status(403).json({ message: "Not authorized" });
+    db.query("DELETE FROM messages WHERE id = ?", [id], (err2) => {
+      if (err2) return res.status(500).json({ message: "Database error", error: err2 });
+      return res.status(200).json({ message: "Message deleted" });
+    });
+  });
+};
+
 export const sendMessage = (req, res) => {
   const { senderId, receiverId, content } = req.body;
   const query = "INSERT INTO messages (senderId, receiverId, content) VALUES (?, ?, ?)";

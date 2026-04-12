@@ -13,6 +13,16 @@ class MessageModel {
     this.createdAt,
   });
 
+  /// Parses the raw [createdAt] string into a local [DateTime], or null if missing.
+  DateTime? get parsedCreatedAt {
+    if (createdAt == null || createdAt!.isEmpty) return null;
+    try {
+      return DateTime.parse(createdAt!).toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
   factory MessageModel.fromJson(Map<String, dynamic> json) {
     return MessageModel(
       id: json['id'] as int,

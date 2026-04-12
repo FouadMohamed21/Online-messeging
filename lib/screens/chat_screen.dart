@@ -39,18 +39,19 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _loadMessages() async {
     if (_myId == null) return;
     try {
-      final raw =
-          await ApiService.getMessages(_myId!, widget.contact.id);
+      final raw = await ApiService.getMessages(_myId!, widget.contact.id);
       final msgs = raw
           .map((e) => MessageModel.fromJson(e as Map<String, dynamic>))
           .toList();
-      setState(() {
-        _messages = msgs;
-        _isLoading = false;
-      });
-      _scrollToBottom();
+      if (mounted) {
+        setState(() {
+          _messages = msgs;
+          _isLoading = false;
+        });
+        _scrollToBottom();
+      }
     } catch (_) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -79,6 +80,59 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  /// Shows a confirmation dialog, then deletes the message from the server.
+  Future<void> _deleteMessage(MessageModel msg) async {
+    if (_myId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Delete message?',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'This message will be permanently removed.',
+          style: TextStyle(color: Colors.white60),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel',
+                style: TextStyle(color: Color(0xFF818CF8))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete',
+                style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final success = await ApiService.deleteMessage(msg.id, _myId!);
+    if (success) {
+      // Optimistically remove from list
+      setState(() => _messages.removeWhere((m) => m.id == msg.id));
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to delete message.'),
+            backgroundColor: Colors.redAccent.shade200,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    }
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
@@ -89,6 +143,26 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       }
     });
+  }
+
+  /// Formats a DateTime for display under the bubble (e.g. "3:45 PM").
+  String _formatTime(DateTime? dt) {
+    if (dt == null) return '';
+    final h = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final m = dt.minute.toString().padLeft(2, '0');
+    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    return '$h:$m $period';
+  }
+
+  /// Returns a human-readable date label for a separator.
+  String _dateLabel(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final msgDay = DateTime(dt.year, dt.month, dt.day);
+    final diff = today.difference(msgDay).inDays;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 
   @override
@@ -173,7 +247,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          // Messages
+          // Messages list
           Expanded(
             child: _isLoading
                 ? const Center(
@@ -190,18 +264,33 @@ class _ChatScreenState extends State<ChatScreen> {
                         itemBuilder: (context, i) {
                           final msg = _messages[i];
                           final isMe = msg.senderId == _myId;
-                          // Show date separator if it's the first message or date changed
-                          final showDate = i == 0;
+
+                          // Date separator logic
+                          final dt = msg.parsedCreatedAt;
+                          bool showSeparator = false;
+                          if (i == 0) {
+                            showSeparator = true;
+                          } else {
+                            final prev = _messages[i - 1].parsedCreatedAt;
+                            if (dt != null && prev != null) {
+                              final a = DateTime(dt.year, dt.month, dt.day);
+                              final b = DateTime(prev.year, prev.month, prev.day);
+                              showSeparator = a != b;
+                            }
+                          }
+
                           return Column(
                             children: [
-                              if (showDate) _buildDateSeparator('Today'),
+                              if (showSeparator)
+                                _buildDateSeparator(
+                                    dt != null ? _dateLabel(dt) : 'Today'),
                               _buildBubble(context, msg, isMe),
                             ],
                           );
                         },
                       ),
           ),
-          // Input Bar
+          // Input bar
           _buildInputBar(),
         ],
       ),
@@ -264,49 +353,74 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildBubble(BuildContext context, MessageModel msg, bool isMe) {
+    final timeStr = _formatTime(msg.parsedCreatedAt);
+
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.76),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        decoration: BoxDecoration(
-          gradient: isMe
-              ? const LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFF818CF8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: isMe ? null : const Color(0xFF1E293B),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: isMe
-                ? const Radius.circular(20)
-                : const Radius.circular(4),
-            bottomRight: isMe
-                ? const Radius.circular(4)
-                : const Radius.circular(20),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isMe
-                  ? const Color(0xFF6366F1).withOpacity(0.2)
-                  : Colors.black.withOpacity(0.1),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
-            )
-          ],
-        ),
-        child: Text(
-          msg.content,
-          style: TextStyle(
-            color: isMe ? Colors.white : Colors.white.withOpacity(0.9),
-            fontSize: 15,
-            height: 1.4,
+      child: GestureDetector(
+        // Long-press to delete (only for the user's own messages)
+        onLongPress: isMe ? () => _deleteMessage(msg) : null,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.76),
+          child: Column(
+            crossAxisAlignment:
+                isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: isMe
+                      ? const LinearGradient(
+                          colors: [Color(0xFF6366F1), Color(0xFF818CF8)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  color: isMe ? null : const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(20),
+                    topRight: const Radius.circular(20),
+                    bottomLeft: isMe
+                        ? const Radius.circular(20)
+                        : const Radius.circular(4),
+                    bottomRight: isMe
+                        ? const Radius.circular(4)
+                        : const Radius.circular(20),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isMe
+                          ? const Color(0xFF6366F1).withOpacity(0.2)
+                          : Colors.black.withOpacity(0.1),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    )
+                  ],
+                ),
+                child: Text(
+                  msg.content,
+                  style: TextStyle(
+                    color: isMe ? Colors.white : Colors.white.withOpacity(0.9),
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              if (timeStr.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 3, left: 4, right: 4),
+                  child: Text(
+                    timeStr,
+                    style: const TextStyle(
+                      color: Colors.white38,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
